@@ -33,6 +33,32 @@ pub trait Terminal: Sync + Debug {
     }
 }
 
+#[allow(clippy::result_unit_err)]
+pub trait Read: Terminal {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, ()> {
+        let len = buf.len();
+
+        for b in buf.iter_mut().take(len) {
+            *b = self.get_byte();
+        }
+
+        Ok(len)
+    }
+}
+
+#[allow(clippy::result_unit_err)]
+pub trait Write: Terminal {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, ()> {
+        let len = buf.len();
+
+        for b in buf.iter().take(len) {
+            self.put_byte(*b);
+        }
+
+        Ok(len)
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct SerialPort<'a> {
     driver: &'a dyn IOPort,
@@ -91,5 +117,8 @@ impl Terminal for SerialPort<'_> {
         }
     }
 }
+
+impl Read for SerialPort<'_> {}
+impl Write for SerialPort<'_> {}
 
 pub static DEFAULT_SERIAL_PORT: SerialPort<'_> = SerialPort::new(&DEFAULT_IO_DRIVER, SERIAL_PORT);
