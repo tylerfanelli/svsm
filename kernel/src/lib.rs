@@ -13,6 +13,8 @@
 
 pub mod acpi;
 pub mod address;
+#[cfg(feature = "attest")]
+pub mod attest;
 pub mod config;
 pub mod console;
 pub mod cpu;
