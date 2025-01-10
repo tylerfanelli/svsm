@@ -15,6 +15,8 @@ use core::panic::PanicInfo;
 use core::slice;
 use cpuarch::snp_cpuid::SnpCpuidTable;
 use svsm::address::{Address, PhysAddr, VirtAddr};
+#[cfg(feature = "attest")]
+use svsm::attest::*;
 use svsm::config::SvsmConfig;
 use svsm::console::install_console_logger;
 use svsm::cpu::control_regs::{cr0_init, cr4_init};
@@ -315,6 +317,13 @@ pub extern "C" fn svsm_main() {
 
     if let Err(e) = SVSM_PLATFORM.prepare_fw(&config, new_kernel_region(&LAUNCH_INFO)) {
         panic!("Failed to prepare guest FW: {e:#?}");
+    }
+
+    #[cfg(feature = "attest")]
+    {
+        let mut a = AttestationDriver::try_from(kbs_types::Tee::Snp).unwrap();
+        let bytes = a.attest().unwrap();
+        log::info!("{}", core::str::from_utf8(&bytes).unwrap());
     }
 
     #[cfg(all(feature = "vtpm", not(test)))]
