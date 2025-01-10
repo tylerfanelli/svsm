@@ -12,6 +12,8 @@ use serde::Serialize;
 use std::{
     io::{Read, Write},
     os::unix::net::UnixStream,
+    thread,
+    time::Duration,
 };
 
 /// Attest an SVSM client session.
@@ -106,6 +108,8 @@ fn proxy_write(stream: &mut UnixStream, buf: impl Serialize) -> anyhow::Result<(
     stream
         .write_all(&bytes)
         .context("unable to write buffer to socket")?;
+
+    thread::sleep(Duration::from_millis(100));
 
     Ok(())
 }
