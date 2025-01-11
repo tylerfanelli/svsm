@@ -6,6 +6,7 @@
 // Author: Tyler Fanelli <tfanelli@redhat.com>
 
 pub mod kbs;
+pub mod teekms;
 
 use anyhow::anyhow;
 use lazy_static::lazy_static;
@@ -40,6 +41,7 @@ impl HttpClient {
 #[derive(Clone, Copy, Debug)]
 pub enum Protocol {
     Kbs,
+    TeeKms,
 }
 
 impl FromStr for Protocol {
@@ -47,7 +49,7 @@ impl FromStr for Protocol {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match &s.to_lowercase()[..] {
-            "kbs" => Ok(Self::Kbs),
+            "tee-kms" => Ok(Self::TeeKms),
             _ => Err(anyhow!("invalid backend attestation protocol selected")),
         }
     }

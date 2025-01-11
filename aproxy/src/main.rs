@@ -8,7 +8,7 @@
 mod attest;
 mod backend;
 
-use crate::backend::{kbs::KbsProtocol, *};
+use crate::backend::{kbs::KbsProtocol, teekms::TeeKmsProtocol, *};
 use anyhow::Context;
 use clap::Parser;
 use reqwest::{blocking::Client, cookie::Jar};
@@ -46,7 +46,8 @@ fn main() -> anyhow::Result<()> {
 
     // Initialize HTTP socket for attestation server (with specific protocol).
     let (negotiation, attestation) = match args.backend {
-        Protocol::Kbs => (KbsProtocol::negotiation, KbsProtocol::attestation),
+        Protocol::TeeKms => (TeeKmsProtocol::negotiation, TeeKmsProtocol::attestation),
+        _ => panic!(),
     };
 
     let http = HttpClient {
