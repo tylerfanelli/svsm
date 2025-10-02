@@ -36,6 +36,47 @@ is fresh and legitimate. The negotiation phase returns the parameters that SVSM
 should include in its attestation evidence based on the underlying attestation
 server and protocol.
 
+In the negotiation phase, a `NegotiationRequest` is sent from SVSM to the proxy.
+An example `NegotiationRequest` is shown below.
+```
+NegotiationRequest {
+    version: "0.1.0",
+    tee: Tee::Snp,      // AMD SEV-SNP architecture.
+}
+```
+
+- `version`: The SVSM attestation protocol version to use. In place to ensure
+backwards compatibility with updated protocol versions should modifications
+occur.
+- `tee`: The TEE hardware architecture that SVSM is running on.
+
+The proxy will then complete the negotiation phase with the remote attestation
+server and reply with a list of negotiation parameters that must be included in
+the attestation evidence.
+
+A `NegotiationResponse` is sent from the proxy to SVSM.
+An example `NegotiationResponse` is shown below.
+```
+NegotiationResponse {
+    challenge: [0, 1, 2, 3],
+    params: [
+                NegotiationParams::EcPublicKeyBytes,
+                NegotiationParams::Bytes([4, 5, 6, 7]),
+                NegotiationParams::Challenge,
+            ],
+}
+```
+- `challenge`: The challenge nonce returned by the remote attestation server
+that will likely need to be hashed into the attestation evidence to ensure
+frehsness.
+- `params`: The negotiation parameters. Each `NegotiationParam` represents some
+form of data that must be hashed into the attestation evidence. This hash will
+later be reconstructed by the remote attestation server when the evidence is
+presented from SVSM.
+
+SVSM can then collect the attestation evidence (embedded with the negotiation
+parameters) and continue to the attestation phase.
+
 ### Attestation Phase
 
 With all relevant data embedded in TEE evidence, SVSM sends its evidence to the
@@ -43,6 +84,54 @@ remote server for evaluation. Upon successful attestation, the proxy will obtain
 an encrypted secret (only decryptable by SVSM's TEE private key) for SVSM to
 use. For example, SVSM could use this secret to unlock encrypted persistent
 storage.
+
+In the attestation phase, an `AttestationRequest` is sent from SVSM to the proxy.
+An example `AttestationRequest` is shown below.
+```
+AttestationRequest {
+    evidence: [0, 1, 2, 3],
+    challenge: [4, 5, 6, 7],
+    key: EcP256PublicKey {
+        x: [8, 9, 10, 11],
+        y: [12, 13, 14, 15]
+    },
+}
+```
+
+- `evidence`: The attestation evidence (i.e. report) from the TEE processor.
+- `challenge`: The original challenge nonce given in the `NegotiationResponse`.
+- `key`: The EC public key that will be used to encrypt secret payloads received
+from the remote server upon a successful attestation.
+
+The proxy will forward the evidence and metadata to the remote attestation
+server for evaluation. Upon successful attestation, the proxy should be able to
+retrieve some secret payload from the remote server. The proxy will retrieve
+this secret and reply to SVSM with an `AttestationResponse`.
+An example `AttestationResponse` is shown below.
+```
+AttestationResponse {
+    pub success: true,
+    pub secret: Some([0, 1, 2, 3]),         // `None` if attestation failed.
+    pub decryption: Some(AesGcmData {       // `None` if attestation failed.
+        epk: EcP256PublicKey {
+            x: [4, 5, 6, 7],
+            y: [8, 9, 10, 11]
+        },
+        wrapped_cek: [12, 13, 14, 15],
+        aad: [16, 17, 18, 19],
+        iv: [20, 21, 22, 23],
+        tag: [24, 25, 26, 27]
+    }),
+}
+```
+- `success`: Indicates if attestation was ultimately successful.
+- `secret`: The encrypted secret payload.
+- `decryption`: ECDH-ES-A256KW data needed to perform the handshake and derive
+the AES key for the encrypted secret payload.
+
+With a successful attestation, SVSM can now use the secret payload for some
+purpose (for example, to unlock some persistent state required for booting the
+OS) and continue on with execution.
 
 ## Attestation Host Proxy
 
