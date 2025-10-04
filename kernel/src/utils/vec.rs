@@ -27,7 +27,6 @@ pub fn vec_sized<T: Default + Clone>(size: usize) -> Result<Vec<T>, TryReserveEr
     let mut vec: Vec<T> = Vec::new();
 
     vec.try_reserve_exact(size)?;
-    vec.resize(size, T::default());
 
     Ok(vec)
 }
